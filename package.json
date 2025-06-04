@@ -1,0 +1,37 @@
+{
+  "name": "com.natteens.ultrasavesystem",
+  "version": "0.0.1",
+  "displayName": "Ultra Save System",
+  "description": "Sistema que salva automaticamente seus dados de jogo. Simplesmente coloque uma marca\u00e7\u00e3o nas suas classes e pronto - o sistema cuida do resto. Salva com seguran\u00e7a, carrega rapidinho e voc\u00ea n\u00e3o precisa configurar nada complicado.",
+  "keywords": [
+    "Unity",
+    "GameDev",
+    "UltraSaveSystem"
+  ],
+  "author": {
+    "name": "Nathan da Silva Miranda",
+    "email": "nathanmiranda1102@gmail.com",
+    "url": "https://github.com/Natteens"
+  },
+  "unity": "2021.3",
+  "samples": [
+    {
+      "displayName": "2D Sample",
+      "description": "Exemplo demonstrando o uso do Ultra Save System em um jogo 2D.",
+      "path": "Samples~/2D Sample"
+    },
+    {
+      "displayName": "3D Sample",
+      "description": "Exemplo demonstrando o uso do Ultra Save System em um jogo 3D.",
+      "path": "Samples~/3D Sample"
+    },
+    {
+      "displayName": "Utilities Sample",
+      "description": "Utilit\u00e1rios e prefabs de exemplo para testes e desenvolvimento.",
+      "path": "Samples~/Utilities Sample"
+    }
+  ],
+  "documentationUrl": "https://github.com/Natteens/UltraSaveSystem",
+  "changelogUrl": "https://github.com/Natteens/UltraSaveSystem/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/Natteens/UltraSaveSystem/blob/main/LICENSE.md"
+}

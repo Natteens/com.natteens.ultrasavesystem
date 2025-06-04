@@ -1,0 +1,10 @@
+{
+  "name": "com.natteens.ultrasavesystem.editor",
+  "rootNamespace": "Natteens.UltraSaveSystem",
+  "references": [
+    "com.natteens.ultrasavesystem"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ]
+}

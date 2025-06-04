@@ -1,0 +1,20 @@
+{
+  "name": "com.natteens.ultrasavesystem.editor.tests",
+  "rootNamespace": "Natteens.UltraSaveSystem.Tests",
+  "references": [
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner",
+    "com.natteens.ultrasavesystem",
+    "com.natteens.ultrasavesystem.editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ]
+}
