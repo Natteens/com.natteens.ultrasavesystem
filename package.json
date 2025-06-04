@@ -1,8 +1,8 @@
 {
   "name": "com.natteens.ultrasavesystem",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "displayName": "Ultra Save System",
-  "description": "Sistema que salva automaticamente seus dados de jogo. Simplesmente coloque uma marca\u00e7\u00e3o nas suas classes e pronto - o sistema cuida do resto. Salva com seguran\u00e7a, carrega rapidinho e voc\u00ea n\u00e3o precisa configurar nada complicado.",
+  "description": "Sistema que salva automaticamente seus dados de jogo. Simplesmente coloque uma marcação nas suas classes e pronto - o sistema cuida do resto. Salva com segurança, carrega rapidinho e você não precisa configurar nada complicado.",
   "keywords": [
     "Unity",
     "GameDev",
@@ -27,7 +27,7 @@
     },
     {
       "displayName": "Utilities Sample",
-      "description": "Utilit\u00e1rios e prefabs de exemplo para testes e desenvolvimento.",
+      "description": "Utilitários e prefabs de exemplo para testes e desenvolvimento.",
       "path": "Samples~/Utilities Sample"
     }
   ],
