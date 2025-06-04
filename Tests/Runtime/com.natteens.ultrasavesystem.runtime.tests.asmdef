@@ -1,17 +1,22 @@
 {
-  "name": "com.natteens.ultrasavesystem.runtime.tests",
-  "rootNamespace": "Natteens.UltraSaveSystem.Tests",
-  "references": [
-    "UnityEngine.TestRunner",
-    "UnityEditor.TestRunner",
-    "com.natteens.ultrasavesystem"
-  ],
-  "includePlatforms": [],
-  "excludePlatforms": [],
-  "defineConstraints": [
-    "UNITY_INCLUDE_TESTS"
-  ],
-  "precompiledReferences": [
-    "nunit.framework.dll"
-  ]
+    "name": "com.natteens.ultrasavesystem.runtime.tests",
+    "rootNamespace": "UltraSaveSystem.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "com.natteens.ultrasavesystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

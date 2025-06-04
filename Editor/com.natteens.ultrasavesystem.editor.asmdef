@@ -1,10 +1,18 @@
 {
-  "name": "com.natteens.ultrasavesystem.editor",
-  "rootNamespace": "Natteens.UltraSaveSystem",
-  "references": [
-    "com.natteens.ultrasavesystem"
-  ],
-  "includePlatforms": [
-    "Editor"
-  ]
+    "name": "com.natteens.ultrasavesystem.editor",
+    "rootNamespace": "UltraSaveSystem.Editor",
+    "references": [
+        "com.natteens.ultrasavesystem"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
 }
