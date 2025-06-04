@@ -8,7 +8,7 @@ Este pacote pode ser instalado através do Unity Package Manager.
 
 1. Abra o Package Manager (Window > Package Manager)
 2. Clique no botão + e selecione "Add package from git URL..."
-3. Digite: https://github.com/Natteens/UltraSaveSystem.git
+3. Digite: https://github.com/Natteens/com.natteens.ultrasavesystem.git
 
 ## 🚀 Uso
 
