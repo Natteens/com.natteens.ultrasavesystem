@@ -17,6 +17,10 @@ namespace UltraSaveSystem
         private static readonly Dictionary<Type, FieldInfo[]> _cachedFields = new();
         private static readonly Dictionary<string, SavedObjectData> _pendingLoadData = new();
         
+        // Sistema de callbacks personalizados
+        private static readonly Dictionary<string, List<Action>> _onAfterLoadCallbacks = new();
+        private static readonly Dictionary<string, List<Action>> _onBeforeSaveCallbacks = new();
+        
         public static void RegisterForSave(this object obj, string customKey = null)
         {
             if (obj == null) return;
@@ -52,9 +56,76 @@ namespace UltraSaveSystem
             var key = customKey ?? GenerateSaveKey(obj);
             _saveableObjects.Remove(key);
             _objectMetadata.Remove(key);
+            _onAfterLoadCallbacks.Remove(key);
+            _onBeforeSaveCallbacks.Remove(key);
             
             if (UltraSaveManager.Config?.enableVerboseLogging == true)
                 Debug.Log($"Unregistered object from save: {key}");
+        }
+        
+        // Métodos para adicionar callbacks customizados
+        public static void AddOnAfterLoadCallback(this object obj, Action callback, string customKey = null)
+        {
+            if (obj == null || callback == null) return;
+            
+            var key = customKey ?? GenerateSaveKey(obj);
+            if (!_onAfterLoadCallbacks.ContainsKey(key))
+                _onAfterLoadCallbacks[key] = new List<Action>();
+                
+            _onAfterLoadCallbacks[key].Add(callback);
+        }
+        
+        public static void AddOnBeforeSaveCallback(this object obj, Action callback, string customKey = null)
+        {
+            if (obj == null || callback == null) return;
+            
+            var key = customKey ?? GenerateSaveKey(obj);
+            if (!_onBeforeSaveCallbacks.ContainsKey(key))
+                _onBeforeSaveCallbacks[key] = new List<Action>();
+                
+            _onBeforeSaveCallbacks[key].Add(callback);
+        }
+        
+        // Métodos para remover callbacks específicos
+        public static void RemoveOnAfterLoadCallback(this object obj, Action callback, string customKey = null)
+        {
+            if (obj == null || callback == null) return;
+            
+            var key = customKey ?? GenerateSaveKey(obj);
+            if (_onAfterLoadCallbacks.TryGetValue(key, out var callbacks))
+                callbacks.Remove(callback);
+        }
+        
+        public static void RemoveOnBeforeSaveCallback(this object obj, Action callback, string customKey = null)
+        {
+            if (obj == null || callback == null) return;
+            
+            var key = customKey ?? GenerateSaveKey(obj);
+            if (_onBeforeSaveCallbacks.TryGetValue(key, out var callbacks))
+                callbacks.Remove(callback);
+        }
+        
+        // Métodos convenientes para usar os callbacks da interface sem implementar a interface
+        public static void SetupDefaultCallbacks(this object obj, 
+            Action onAfterLoad = null, 
+            Action onBeforeSave = null, 
+            string customKey = null)
+        {
+            if (obj == null) return;
+            
+            // Primeiro tenta usar callbacks da interface se o objeto implementa
+            if (obj is ICustomSaveable saveable)
+            {
+                obj.AddOnBeforeSaveCallback(() => saveable.OnBeforeSave(), customKey);
+                obj.AddOnAfterLoadCallback(() => saveable.OnAfterLoad(), customKey);
+            }
+            
+            // Depois adiciona callbacks customizados se fornecidos
+            if (onBeforeSave != null)
+                obj.AddOnBeforeSaveCallback(onBeforeSave, customKey);
+                
+            if (onAfterLoad != null)
+                obj.AddOnAfterLoadCallback(onAfterLoad, customKey);
         }
         
         public static SavedObjectData SerializeObject(this object obj)
@@ -63,6 +134,9 @@ namespace UltraSaveSystem
             
             var key = GenerateSaveKey(obj);
             var data = new SavedObjectData { saveKey = key };
+            
+            // Executa callbacks personalizados antes de salvar
+            ExecuteOnBeforeSaveCallbacks(key);
             
             if (_objectMetadata.TryGetValue(key, out var metadata))
             {
@@ -98,7 +172,6 @@ namespace UltraSaveSystem
                 {
                     try
                     {
-                        customSaveable.OnBeforeSave();
                         data.customData = customSaveable.SerializeCustomData();
                     }
                     catch (Exception ex)
@@ -157,7 +230,6 @@ namespace UltraSaveSystem
                     try
                     {
                         customSaveable.DeserializeCustomData(data.customData);
-                        customSaveable.OnAfterLoad();
                     }
                     catch (Exception ex)
                     {
@@ -165,7 +237,8 @@ namespace UltraSaveSystem
                     }
                 }
                 
-                CallOnAfterLoadMethod(obj);
+                // Executa callbacks personalizados após o load
+                ExecuteOnAfterLoadCallbacks(key);
             }
         }
         
@@ -204,25 +277,37 @@ namespace UltraSaveSystem
             _pendingLoadData.Clear();
         }
         
-        private static void CallOnAfterLoadMethod(object obj)
+        private static void ExecuteOnAfterLoadCallbacks(string key)
         {
-            try
+            if (!_onAfterLoadCallbacks.TryGetValue(key, out var callbacks)) return;
+            
+            foreach (var callback in callbacks)
             {
-                var method = obj.GetType().GetMethod("OnAfterLoad", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                method?.Invoke(obj, null);
-                
-                var applyMethod = obj.GetType().GetMethod("ApplyVisualSettings", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                applyMethod?.Invoke(obj, null);
-                
-                var refreshMethod = obj.GetType().GetMethod("RefreshVisuals", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                refreshMethod?.Invoke(obj, null);
-                
-                var updateMethod = obj.GetType().GetMethod("UpdateVisuals", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                updateMethod?.Invoke(obj, null);
+                try
+                {
+                    callback?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"OnAfterLoad callback failed for {key}: {ex.Message}");
+                }
             }
-            catch (Exception ex)
+        }
+        
+        private static void ExecuteOnBeforeSaveCallbacks(string key)
+        {
+            if (!_onBeforeSaveCallbacks.TryGetValue(key, out var callbacks)) return;
+            
+            foreach (var callback in callbacks)
             {
-                Debug.LogWarning($"Failed to call post-load methods: {ex.Message}");
+                try
+                {
+                    callback?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"OnBeforeSave callback failed for {key}: {ex.Message}");
+                }
             }
         }
         
