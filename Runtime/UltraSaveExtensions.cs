@@ -17,7 +17,6 @@ namespace UltraSaveSystem
         private static readonly Dictionary<Type, FieldInfo[]> _cachedFields = new();
         private static readonly Dictionary<string, SavedObjectData> _pendingLoadData = new();
         
-        // Sistema de callbacks personalizados
         private static readonly Dictionary<string, List<Action>> _onAfterLoadCallbacks = new();
         private static readonly Dictionary<string, List<Action>> _onBeforeSaveCallbacks = new();
         
@@ -63,7 +62,6 @@ namespace UltraSaveSystem
                 Debug.Log($"Unregistered object from save: {key}");
         }
         
-        // Métodos para adicionar callbacks customizados
         public static void AddOnAfterLoadCallback(this object obj, Action callback, string customKey = null)
         {
             if (obj == null || callback == null) return;
@@ -86,7 +84,6 @@ namespace UltraSaveSystem
             _onBeforeSaveCallbacks[key].Add(callback);
         }
         
-        // Métodos para remover callbacks específicos
         public static void RemoveOnAfterLoadCallback(this object obj, Action callback, string customKey = null)
         {
             if (obj == null || callback == null) return;
@@ -105,7 +102,6 @@ namespace UltraSaveSystem
                 callbacks.Remove(callback);
         }
         
-        // Métodos convenientes para usar os callbacks da interface sem implementar a interface
         public static void SetupDefaultCallbacks(this object obj, 
             Action onAfterLoad = null, 
             Action onBeforeSave = null, 
@@ -113,14 +109,12 @@ namespace UltraSaveSystem
         {
             if (obj == null) return;
             
-            // Primeiro tenta usar callbacks da interface se o objeto implementa
             if (obj is ICustomSaveable saveable)
             {
                 obj.AddOnBeforeSaveCallback(() => saveable.OnBeforeSave(), customKey);
                 obj.AddOnAfterLoadCallback(() => saveable.OnAfterLoad(), customKey);
             }
             
-            // Depois adiciona callbacks customizados se fornecidos
             if (onBeforeSave != null)
                 obj.AddOnBeforeSaveCallback(onBeforeSave, customKey);
                 
@@ -135,7 +129,6 @@ namespace UltraSaveSystem
             var key = GenerateSaveKey(obj);
             var data = new SavedObjectData { saveKey = key };
             
-            // Executa callbacks personalizados antes de salvar
             ExecuteOnBeforeSaveCallbacks(key);
             
             if (_objectMetadata.TryGetValue(key, out var metadata))
@@ -237,7 +230,6 @@ namespace UltraSaveSystem
                     }
                 }
                 
-                // Executa callbacks personalizados após o load
                 ExecuteOnAfterLoadCallbacks(key);
             }
         }

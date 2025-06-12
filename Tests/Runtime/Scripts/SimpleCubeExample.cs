@@ -1,12 +1,12 @@
-using UnityEngine;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEditor;
+using UnityEngine;
 
-namespace UltraSaveSystem.Tests.Runtime
+namespace UltraSaveSystem.Tests.Runtime.Scripts
 {
-    [Saveable("gpu_cube_ocean", true)]
+    [Saveable("cube_ocean", true)]
     public class SimpleCubeExample : MonoBehaviour
     {
         private static readonly int Smoothness = Shader.PropertyToID("_Smoothness");
@@ -25,8 +25,8 @@ namespace UltraSaveSystem.Tests.Runtime
         [SaveField] public Color baseColor = Color.cyan;
         
         [Header("Rendering")]
-        public Material cubeMaterial;
-        public Mesh cubeMesh;
+        public Material material;
+        public Mesh mesh;
         
         private NativeArray<Matrix4x4> matrices;
         private NativeArray<Vector4> colors;
@@ -53,21 +53,21 @@ namespace UltraSaveSystem.Tests.Runtime
         
         private void SetupMaterialAndMesh()
         {
-            if (cubeMesh == null)
+            if (mesh == null)
             {
                 var cubeGO = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                cubeMesh = cubeGO.GetComponent<MeshFilter>().sharedMesh;
+                mesh = cubeGO.GetComponent<MeshFilter>().sharedMesh;
                 DestroyImmediate(cubeGO);
             }
             
-            if (cubeMaterial == null)
+            if (material == null)
             {
-                cubeMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                cubeMaterial.SetFloat(Smoothness, 0f);
-                cubeMaterial.SetFloat(Metallic, 0f);
-                cubeMaterial.enableInstancing = true;
+                material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                material.SetFloat(Smoothness, 0f);
+                material.SetFloat(Metallic, 0f);
+                material.enableInstancing = true;
                 
-                cubeMaterial.SetColor(BaseColor, baseColor);
+                material.SetColor(BaseColor, baseColor);
             }
             
             materialProperties = new MaterialPropertyBlock();
@@ -124,9 +124,9 @@ namespace UltraSaveSystem.Tests.Runtime
             jobHandle.Complete();
             setupJob.colorPalette.Dispose();
             
-            if (cubeMaterial != null)
+            if (material != null)
             {
-                cubeMaterial.SetColor(BaseColor, colorPalette[0]);
+                material.SetColor(BaseColor, colorPalette[0]);
             }
         }
         
@@ -151,12 +151,12 @@ namespace UltraSaveSystem.Tests.Runtime
         
         private void UpdateColors()
         {
-            if (cubeMaterial != null && colorPalette.Length > 0)
+            if (material != null && colorPalette.Length > 0)
             {
                 Color currentColor = Color.Lerp(colorPalette[0], colorPalette[colorVariations % colorPalette.Length], 
                     0.5f + 0.5f * Mathf.Sin(time * 0.5f));
                 
-                cubeMaterial.SetColor(BaseColor, currentColor);
+                material.SetColor(BaseColor, currentColor);
                 
                 if (colors.IsCreated && colors.Length <= 4096 && colors.Length == previousArraySize)
                 {
@@ -169,7 +169,7 @@ namespace UltraSaveSystem.Tests.Runtime
         {
             jobHandle.Complete();
             
-            if (cubeMaterial == null || !cubeMaterial.enableInstancing)
+            if (material == null || !material.enableInstancing)
             {
                 Debug.LogError("Material não configurado para GPU Instancing!");
                 return;
@@ -187,9 +187,9 @@ namespace UltraSaveSystem.Tests.Runtime
                 }
                 
                 Graphics.DrawMeshInstanced(
-                    cubeMesh, 
+                    mesh, 
                     0, 
-                    cubeMaterial, 
+                    material, 
                     batch, 
                     currentBatchSize,
                     materialProperties
@@ -278,9 +278,9 @@ namespace UltraSaveSystem.Tests.Runtime
             if (newColorVar != colorVariations)
             {
                 colorVariations = newColorVar;
-                if (cubeMaterial != null)
+                if (material != null)
                 {
-                    cubeMaterial.SetColor(BaseColor, colorPalette[0]);
+                    material.SetColor(BaseColor, colorPalette[0]);
                 }
             }
             
@@ -288,7 +288,7 @@ namespace UltraSaveSystem.Tests.Runtime
             GUILayout.Label("Informaçoes de performance:");
             GUILayout.Label($"FPS: {1f / Time.deltaTime:F0} FPS");
             GUILayout.Label($"Cubos renderizados: {gridWidth * gridHeight:N0}");
-            GUILayout.Label($"GPU Instancing: {(cubeMaterial?.enableInstancing == true ? "Sim" : "Nao")}");
+            GUILayout.Label($"GPU Instancing: {(material?.enableInstancing == true ? "Sim" : "Nao")}");
           
             GUILayout.Space(15);
             GUILayout.Label("Controles:");
