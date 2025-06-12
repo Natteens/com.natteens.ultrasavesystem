@@ -40,12 +40,4 @@ namespace UltraSaveSystem
         Normal = 2,
         Low = 3
     }
-
-    public interface ICustomSaveable
-    {
-        void OnBeforeSave();
-        void OnAfterLoad();
-        byte[] SerializeCustomData();
-        void DeserializeCustomData(byte[] data);
-    }
 }

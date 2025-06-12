@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,119 +9,121 @@ namespace UltraSaveSystem
 {
     public static class UltraCrypto
     {
-        private const string CRYPTO_PREFIX = "ULTRAENC:";
-        private static readonly byte[] _saltBytes = Encoding.UTF8.GetBytes("UltraGameSave2024_SecureSalt");
-        private static byte[] _derivedKey;
-        private static bool _isInitialized;
+        private static string _key;
+        private static byte[] _keyBytes;
+        private static byte[] _iv;
         
         public static void Initialize()
         {
-            if (_isInitialized) return;
-            
-            var deviceInfo = $"{SystemInfo.deviceUniqueIdentifier}_{Application.version}_{SystemInfo.processorType}";
-            var userInfo = $"Natteens_{DateTime.UtcNow.Year}";
-            var finalKey = $"{deviceInfo}_{userInfo}";
-            
-            _derivedKey = GenerateSecureKey(finalKey);
-            _isInitialized = true;
-            
-            Debug.Log("UltraCrypto initialized");
+            _key = SystemInfo.deviceUniqueIdentifier + "495svF!iDX";
+            _keyBytes = GenerateKey(_key);
+            _iv = GenerateIV(_key);
         }
         
         public static async Task<string> EncryptAsync(string plainText)
         {
-            if (!_isInitialized) Initialize();
-            if (string.IsNullOrEmpty(plainText)) return "";
-            
-            return await Task.Run(() =>
+            var bytes = Encoding.UTF8.GetBytes(plainText);
+            var encryptedBytes = await EncryptBytesAsync(bytes);
+            return Convert.ToBase64String(encryptedBytes);
+        }
+        
+        public static async Task<string> DecryptAsync(string cipherText)
+        {
+            try
             {
-                try
-                {
-                    if (IsEncrypted(plainText))
-                        return plainText;
-                    
-                    var plainBytes = Encoding.UTF8.GetBytes(plainText);
-                    var encryptedBytes = EncryptBytesInternal(plainBytes);
-                    var base64 = Convert.ToBase64String(encryptedBytes);
-                    
-                    return CRYPTO_PREFIX + base64;
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError($"Encryption failed: {ex.Message}");
-                    return plainText;
-                }
-            });
-        }
-        
-        public static async Task<string> DecryptAsync(string encryptedText)
-        {
-            if (!_isInitialized) Initialize();
-            if (string.IsNullOrEmpty(encryptedText)) return "";
-            
-            return await Task.Run(() =>
+                var encryptedBytes = Convert.FromBase64String(cipherText);
+                var decryptedBytes = await DecryptBytesAsync(encryptedBytes);
+                return Encoding.UTF8.GetString(decryptedBytes);
+            }
+            catch (Exception ex)
             {
-                try
+                Debug.LogError($"Erro na descriptografia de string: {ex.Message}");
+                throw;
+            }
+        }
+        
+        public static async Task<byte[]> EncryptBytesAsync(byte[] data)
+        {
+            if (_keyBytes == null) Initialize();
+            
+            try
+            {
+                using (var aes = Aes.Create())
                 {
-                    if (!IsEncrypted(encryptedText))
-                        return encryptedText;
+                    aes.Key = _keyBytes;
+                    aes.IV = _iv;
                     
-                    var base64Data = encryptedText.Substring(CRYPTO_PREFIX.Length);
-                    var encryptedBytes = Convert.FromBase64String(base64Data);
-                    var decryptedBytes = DecryptBytesInternal(encryptedBytes);
-                    
-                    return Encoding.UTF8.GetString(decryptedBytes);
+                    using (var encryptor = aes.CreateEncryptor())
+                    using (var ms = new MemoryStream())
+                    using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                    {
+                        await cs.WriteAsync(data, 0, data.Length);
+                        cs.FlushFinalBlock();
+                        return ms.ToArray();
+                    }
                 }
-                catch (Exception ex)
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Erro na criptografia de bytes: {ex.Message}");
+                throw;
+            }
+        }
+        
+        public static async Task<byte[]> DecryptBytesAsync(byte[] encryptedData)
+        {
+            if (_keyBytes == null) Initialize();
+            
+            if (encryptedData == null || encryptedData.Length == 0)
+            {
+                throw new ArgumentException("Dados criptografados inválidos ou vazios");
+            }
+            
+            try
+            {
+                using (var aes = Aes.Create())
                 {
-                    Debug.LogError($"Decryption failed: {ex.Message}");
-                    return encryptedText;
+                    aes.Key = _keyBytes;
+                    aes.IV = _iv;
+                    
+                    using (var decryptor = aes.CreateDecryptor())
+                    using (var ms = new MemoryStream(encryptedData))
+                    using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                    using (var result = new MemoryStream())
+                    {
+                        await cs.CopyToAsync(result);
+                        var decryptedData = result.ToArray();
+                        
+                        if (decryptedData.Length == 0)
+                        {
+                            throw new InvalidOperationException("Resultado da descriptografia está vazio");
+                        }
+                        
+                        return decryptedData;
+                    }
                 }
-            });
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Erro na descriptografia de bytes: {ex.Message}");
+                throw;
+            }
         }
         
-        private static byte[] GenerateSecureKey(string password)
+        private static byte[] GenerateKey(string input)
         {
-            using var rfc2898 = new Rfc2898DeriveBytes(password, _saltBytes, 100000, HashAlgorithmName.SHA256);
-            return rfc2898.GetBytes(32);
+            using (var sha256 = SHA256.Create())
+            {
+                return sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+            }
         }
         
-        private static byte[] EncryptBytesInternal(byte[] data)
+        private static byte[] GenerateIV(string input)
         {
-            using var aes = Aes.Create();
-            aes.Key = _derivedKey;
-            aes.GenerateIV();
-            
-            using var encryptor = aes.CreateEncryptor();
-            var encrypted = encryptor.TransformFinalBlock(data, 0, data.Length);
-            
-            var result = new byte[aes.IV.Length + encrypted.Length];
-            Buffer.BlockCopy(aes.IV, 0, result, 0, aes.IV.Length);
-            Buffer.BlockCopy(encrypted, 0, result, aes.IV.Length, encrypted.Length);
-            
-            return result;
-        }
-        
-        private static byte[] DecryptBytesInternal(byte[] encryptedData)
-        {
-            using var aes = Aes.Create();
-            aes.Key = _derivedKey;
-            
-            var iv = new byte[16];
-            var encrypted = new byte[encryptedData.Length - 16];
-            
-            Buffer.BlockCopy(encryptedData, 0, iv, 0, 16);
-            Buffer.BlockCopy(encryptedData, 16, encrypted, 0, encrypted.Length);
-            
-            aes.IV = iv;
-            
-            using var decryptor = aes.CreateDecryptor();
-            return decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
-        }
-        
-        private static bool IsEncrypted(string text)
-        {
-            return text.StartsWith(CRYPTO_PREFIX);
+            using (var md5 = MD5.Create())
+            {
+                return md5.ComputeHash(Encoding.UTF8.GetBytes(input));
+            }
         }
     }
 }

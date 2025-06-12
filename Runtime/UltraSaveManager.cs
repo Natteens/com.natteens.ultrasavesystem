@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using Object = UnityEngine.Object;
 
 namespace UltraSaveSystem
@@ -34,22 +35,33 @@ namespace UltraSaveSystem
         public static UltraSaveConfig Config => _config;
         public static string SaveDirectory => _saveDirectoryPath;
         public static int TrackedObjectCount => UltraSaveExtensions.GetAllSaveableObjects().Count;
+        public static int CurrentSlot => _config?.currentSlot ?? 0;
         
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
-            _config = Resources.Load<UltraSaveConfig>("UltraSaveConfig");
+            _config = Resources.Load<UltraSaveConfig>("UltraSave/UltraSaveConfig");
+            
             if (_config == null)
             {
-                Debug.LogError("UltraSaveConfig not found in Resources folder");
+                _config = Resources.Load<UltraSaveConfig>("UltraSaveConfig");
+            }
+            
+            if (_config == null)
+            {
+                Debug.LogWarning("Ultra Save System: Configuração não encontrada!\n" +
+                               "Vá em Tools → Ultra Save System → Create Config para corrigir.");
                 return;
             }
             
             if (!_config.enableSystem)
             {
-                Debug.Log("UltraSave System is disabled");
+                if (_config.enableVerboseLogging)
+                    Debug.Log("Ultra Save System está desabilitado nas configurações.");
                 return;
             }
+            
+            ValidateSlotConfiguration();
             
             _saveDirectoryPath = Path.Combine(Application.persistentDataPath, "UltraSaves");
             if (!Directory.Exists(_saveDirectoryPath))
@@ -68,7 +80,17 @@ namespace UltraSaveSystem
             _isInitialized = true;
             
             if (_config.enableVerboseLogging)
-                Debug.Log($"UltraSaveManager initialized");
+                Debug.Log($"Ultra Save System inicializado - Slot ativo: Slot {_config.currentSlot + 1} | " +
+                         $"Compressão: {(_config.enableCompression ? "Ativada" : "Desativada")}");
+        }
+        
+        private static void ValidateSlotConfiguration()
+        {
+            if (_config.maxSaveSlots < 1)
+                _config.maxSaveSlots = 10;
+            
+            if (_config.currentSlot < 0 || _config.currentSlot >= _config.maxSaveSlots)
+                _config.currentSlot = 0;
         }
         
         private static async void DelayedAutoDiscover()
@@ -96,10 +118,22 @@ namespace UltraSaveSystem
             }
         }
         
-        public static async Task<bool> SaveAsync(int slot = 0, bool isAutoSave = false)
+        public static async Task<bool> SaveAsync(int slot = -1, bool isAutoSave = false)
         {
-            if (!_isInitialized || slot < 0 || slot >= _config.maxSaveSlots)
+            if (!_isInitialized)
+            {
+                Debug.LogError("Ultra Save System não está inicializado!");
                 return false;
+            }
+            
+            if (slot == -1)
+                slot = _config.currentSlot;
+            
+            if (slot < 0 || slot >= _config.maxSaveSlots)
+            {
+                Debug.LogError($"Slot inválido: {slot}. Deve estar entre 0 e {_config.maxSaveSlots - 1}");
+                return false;
+            }
             
             OnSaveStarted?.Invoke(slot);
             
@@ -114,6 +148,7 @@ namespace UltraSaveSystem
                     sceneName = SceneManager.GetActiveScene().name,
                     saveTime = DateTime.Now,
                     isEncrypted = _config.enableEncryption,
+                    isCompressed = _config.enableCompression,
                     objects = new List<SavedObjectData>()
                 };
                 
@@ -132,7 +167,7 @@ namespace UltraSaveSystem
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError($"Failed to save object {kvp.Key}: {ex.Message}");
+                        Debug.LogError($"Falha ao salvar objeto {kvp.Key}: {ex.Message}");
                     }
                 }
                 
@@ -141,44 +176,90 @@ namespace UltraSaveSystem
                     TypeNameHandling = TypeNameHandling.Auto,
                     PreserveReferencesHandling = PreserveReferencesHandling.Objects,
                     ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-                    Formatting = Formatting.Indented,
+                    Formatting = _config.enableCompression ? Formatting.None : Formatting.Indented,
                     ContractResolver = new UnityContractResolver()
                 };
                 
                 var json = JsonConvert.SerializeObject(saveData, settings);
+                var originalSize = Encoding.UTF8.GetBytes(json).Length;
+                
+                byte[] finalData;
+                
+                if (_config.enableCompression)
+                {
+                    finalData = await CompressStringAsync(json);
+                }
+                else
+                {
+                    finalData = Encoding.UTF8.GetBytes(json);
+                }
                 
                 if (_config.enableEncryption)
-                    json = await UltraCrypto.EncryptAsync(json);
+                {
+                    try
+                    {
+                        finalData = await UltraCrypto.EncryptBytesAsync(finalData);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"Erro na criptografia do Slot {slot + 1}: {ex.Message}");
+                        OnSaveCompleted?.Invoke(slot, false);
+                        return false;
+                    }
+                }
                 
                 var filePath = GetSaveFilePath(slot);
-                await File.WriteAllTextAsync(filePath, json);
+                await File.WriteAllBytesAsync(filePath, finalData);
                 
                 UpdateConfigTrackedObjects(saveData);
                 
                 OnSaveCompleted?.Invoke(slot, true);
                 
+                var saveType = isAutoSave ? "Autosave" : "Save manual";
                 if (_config.logSaveOperations)
-                    Debug.Log($"Save completed for slot {slot} with {saveData.objects.Count} objects");
+                {
+                    var compressionInfo = "";
+                    if (_config.enableCompression)
+                    {
+                        var compressionRatio = (1f - (float)finalData.Length / originalSize) * 100f;
+                        compressionInfo = $" (Compressão: {compressionRatio:F1}%)";
+                    }
+                    
+                    Debug.Log($"{saveType} concluído no Slot {slot + 1} com {saveData.objects.Count} objetos " +
+                             $"- {FormatBytes(finalData.Length)}{compressionInfo}");
+                }
                 
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Save failed for slot {slot}: {ex.Message}");
+                Debug.LogError($"Falha ao salvar no Slot {slot + 1}: {ex.Message}");
                 OnSaveCompleted?.Invoke(slot, false);
                 return false;
             }
         }
         
-        public static async Task<bool> LoadAsync(int slot = 0)
+        public static async Task<bool> LoadAsync(int slot = -1)
         {
-            if (!_isInitialized || slot < 0 || slot >= _config.maxSaveSlots)
+            if (!_isInitialized)
+            {
+                Debug.LogError("Ultra Save System não está inicializado!");
                 return false;
+            }
+            
+            if (slot == -1)
+                slot = _config.currentSlot;
+            
+            if (slot < 0 || slot >= _config.maxSaveSlots)
+            {
+                Debug.LogError($"Slot inválido: {slot}");
+                return false;
+            }
             
             var filePath = GetSaveFilePath(slot);
             if (!File.Exists(filePath))
             {
-                Debug.LogWarning($"Save file not found for slot {slot}");
+                Debug.LogWarning($"Arquivo de save não encontrado para o Slot {slot + 1}");
                 return false;
             }
             
@@ -186,10 +267,53 @@ namespace UltraSaveSystem
             
             try
             {
-                var json = await File.ReadAllTextAsync(filePath);
+                var fileData = await File.ReadAllBytesAsync(filePath);
+                
+                if (fileData == null || fileData.Length == 0)
+                {
+                    Debug.LogError($"Arquivo de save do Slot {slot + 1} está vazio ou corrompido");
+                    OnLoadCompleted?.Invoke(slot, false);
+                    return false;
+                }
                 
                 if (_config.enableEncryption)
-                    json = await UltraCrypto.DecryptAsync(json);
+                {
+                    try
+                    {
+                        fileData = await UltraCrypto.DecryptBytesAsync(fileData);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"Erro na descriptografia do Slot {slot + 1}: {ex.Message}");
+                        
+                        if (_config.enableVerboseLogging)
+                        {
+                            Debug.LogWarning($"Tentando carregar Slot {slot + 1} sem descriptografia (compatibilidade)");
+                        }
+                        
+                        fileData = await File.ReadAllBytesAsync(filePath);
+                    }
+                }
+                
+                string json;
+                
+                try
+                {
+                    json = await DecompressStringAsync(fileData);
+                }
+                catch
+                {
+                    try
+                    {
+                        json = Encoding.UTF8.GetString(fileData);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"Falha ao processar dados do Slot {slot + 1}: {ex.Message}");
+                        OnLoadCompleted?.Invoke(slot, false);
+                        return false;
+                    }
+                }
                 
                 var settings = new JsonSerializerSettings
                 {
@@ -203,7 +327,7 @@ namespace UltraSaveSystem
                 
                 if (saveData == null)
                 {
-                    Debug.LogError($"Failed to deserialize save data for slot {slot}");
+                    Debug.LogError($"Falha ao deserializar dados do Slot {slot + 1}");
                     OnLoadCompleted?.Invoke(slot, false);
                     return false;
                 }
@@ -230,14 +354,13 @@ namespace UltraSaveSystem
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError($"Failed to load object {objectData.saveKey}: {ex.Message}");
+                        Debug.LogError($"Falha ao carregar objeto {objectData.saveKey}: {ex.Message}");
                     }
                 }
                 
                 if (processedObjects.Count < saveData.objects.Count)
                 {
                     AutoDiscoverAndRegisterObjects();
-                    
                     await Task.Delay(50);
                     
                     var newSaveableObjects = UltraSaveExtensions.GetAllSaveableObjects();
@@ -254,7 +377,7 @@ namespace UltraSaveSystem
                             }
                             catch (Exception ex)
                             {
-                                Debug.LogError($"Failed to load object {objectData.saveKey} on retry: {ex.Message}");
+                                Debug.LogError($"Falha ao carregar objeto {objectData.saveKey} na segunda tentativa: {ex.Message}");
                             }
                         }
                     }
@@ -265,36 +388,83 @@ namespace UltraSaveSystem
                 OnLoadCompleted?.Invoke(slot, true);
                 
                 if (_config.logSaveOperations)
-                    Debug.Log($"Load completed for slot {slot} - processed {processedObjects.Count}/{saveData.objects.Count} objects");
+                {
+                    var compressionInfo = saveData.isCompressed ? " (comprimido)" : "";
+                    Debug.Log($"Load concluído do Slot {slot + 1}{compressionInfo} - " +
+                             $"processados {processedObjects.Count}/{saveData.objects.Count} objetos");
+                }
                 
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.LogError($"Load failed for slot {slot}: {ex.Message}");
+                Debug.LogError($"Falha ao carregar do Slot {slot + 1}: {ex.Message}");
                 OnLoadCompleted?.Invoke(slot, false);
                 return false;
             }
         }
         
+        private static async Task<byte[]> CompressStringAsync(string text)
+        {
+            var bytes = Encoding.UTF8.GetBytes(text);
+            
+            using (var output = new MemoryStream())
+            {
+                using (var gzip = new GZipStream(output, CompressionMode.Compress))
+                {
+                    await gzip.WriteAsync(bytes, 0, bytes.Length);
+                }
+                return output.ToArray();
+            }
+        }
+        
+        private static async Task<string> DecompressStringAsync(byte[] compressedData)
+        {
+            using (var input = new MemoryStream(compressedData))
+            using (var gzip = new GZipStream(input, CompressionMode.Decompress))
+            using (var output = new MemoryStream())
+            {
+                await gzip.CopyToAsync(output);
+                return Encoding.UTF8.GetString(output.ToArray());
+            }
+        }
+        
+        private static string FormatBytes(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024f:F1} KB";
+            return $"{bytes / (1024f * 1024f):F1} MB";
+        }
+        
         public static bool HasSave(int slot)
         {
+            if (slot < 0 || slot >= _config.maxSaveSlots)
+                return false;
+                
             return File.Exists(GetSaveFilePath(slot));
         }
         
         public static bool DeleteSave(int slot)
         {
+            if (slot < 0 || slot >= _config.maxSaveSlots)
+            {
+                Debug.LogError($"Slot inválido: {slot}");
+                return false;
+            }
+            
             var filePath = GetSaveFilePath(slot);
             if (File.Exists(filePath))
             {
                 try
                 {
                     File.Delete(filePath);
+                    if (_config.logSaveOperations)
+                        Debug.Log($"Save do Slot {slot + 1} deletado com sucesso");
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"Failed to delete save slot {slot}: {ex.Message}");
+                    Debug.LogError($"Falha ao deletar save do Slot {slot + 1}: {ex.Message}");
                 }
             }
             return false;
@@ -302,9 +472,12 @@ namespace UltraSaveSystem
         
         public static SaveSlotInfo GetSaveSlotInfo(int slot)
         {
+            if (slot < 0 || slot >= _config.maxSaveSlots)
+                return null;
+                
             var filePath = GetSaveFilePath(slot);
             if (!File.Exists(filePath))
-                return null;
+                return new SaveSlotInfo { slot = slot, exists = false };
             
             try
             {
@@ -323,9 +496,38 @@ namespace UltraSaveSystem
             }
         }
         
+        public static List<SaveSlotInfo> GetAllSlotInfos()
+        {
+            var slots = new List<SaveSlotInfo>();
+            
+            for (int i = 0; i < _config.maxSaveSlots; i++)
+            {
+                slots.Add(GetSaveSlotInfo(i) ?? new SaveSlotInfo { slot = i, exists = false });
+            }
+            
+            return slots;
+        }
+        
+        public static void SetCurrentSlot(int slot)
+        {
+            if (slot < 0 || slot >= _config.maxSaveSlots)
+            {
+                Debug.LogError($"Slot inválido: {slot}. Deve estar entre 0 e {_config.maxSaveSlots - 1}");
+                return;
+            }
+            
+            _config.currentSlot = slot;
+            
+            if (_config.enableVerboseLogging)
+                Debug.Log($"Slot atual alterado para: Slot {slot + 1}");
+        }
+        
         public static void ForceRefreshObjects()
         {
             AutoDiscoverAndRegisterObjects();
+            
+            if (_config.enableVerboseLogging)
+                Debug.Log($"Refresh forçado - {TrackedObjectCount} objetos encontrados");
         }
         
         private static void AutoDiscoverAndRegisterObjects()
@@ -377,7 +579,7 @@ namespace UltraSaveSystem
         
         private static string GetSaveFilePath(int slot)
         {
-            return Path.Combine(_saveDirectoryPath, $"save_slot_{slot:D2}.json");
+            return Path.Combine(_saveDirectoryPath, $"save_slot_{slot + 1:D2}.usav");
         }
         
         private static void UpdateConfigTrackedObjects(UltraSaveFile saveData)
@@ -397,42 +599,5 @@ namespace UltraSaveSystem
                 _config?.AddTrackedObject(info);
             }
         }
-    }
-    
-    public class UnityContractResolver : Newtonsoft.Json.Serialization.DefaultContractResolver
-    {
-        protected override JsonProperty CreateProperty(System.Reflection.MemberInfo member, Newtonsoft.Json.MemberSerialization memberSerialization)
-        {
-            var property = base.CreateProperty(member, memberSerialization);
-            
-            if (property.PropertyType == typeof(Vector3) && (property.PropertyName == "normalized" || property.PropertyName == "magnitude"))
-            {
-                property.ShouldSerialize = instance => false;
-            }
-            
-            if (property.PropertyType == typeof(Quaternion) && (property.PropertyName == "normalized"))
-            {
-                property.ShouldSerialize = instance => false;
-            }
-            
-            return property;
-        }
-    }
-    
-    internal class UltraSaveUpdateRunner : MonoBehaviour
-    {
-        private void Update()
-        {
-            UltraSaveManager.Update();
-        }
-    }
-    
-    [Serializable]
-    public class SaveSlotInfo
-    {
-        public int slot;
-        public bool exists;
-        public DateTime lastModified;
-        public long sizeBytes;
     }
 }

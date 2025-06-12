@@ -1,69 +1,75 @@
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
 using System.IO;
-using System.Diagnostics;
 
 namespace UltraSaveSystem.Editor
 {
-    public static class UltraSaveSystemTools
+    public static class UltraSaveMenuItems
     {
-        [MenuItem("Tools/UltraSaveSystem/Create Config")]
+        [MenuItem("Tools/Ultra Save System/Create Config", false, 1)]
         public static void CreateConfig()
         {
-            var config = ScriptableObject.CreateInstance<UltraSaveConfig>();
-            
             var resourcesPath = "Assets/Resources";
-            if (!Directory.Exists(resourcesPath))
-                Directory.CreateDirectory(resourcesPath);
+            var ultraSaveFolderPath = Path.Combine(resourcesPath, "UltraSave");
             
-            var assetPath = Path.Combine(resourcesPath, "UltraSaveConfig.asset");
-            AssetDatabase.CreateAsset(config, assetPath);
+            if (!AssetDatabase.IsValidFolder(resourcesPath))
+            {
+                AssetDatabase.CreateFolder("Assets", "Resources");
+            }
+            
+            if (!AssetDatabase.IsValidFolder(ultraSaveFolderPath))
+            {
+                AssetDatabase.CreateFolder(resourcesPath, "UltraSave");
+            }
+            
+            var configPath = Path.Combine(ultraSaveFolderPath, "UltraSaveConfig.asset");
+            var existingConfig = AssetDatabase.LoadAssetAtPath<UltraSaveConfig>(configPath);
+            
+            if (existingConfig != null)
+            {
+                if (EditorUtility.DisplayDialog("Config Existente", 
+                    "Já existe um UltraSaveConfig. Deseja substituí-lo?", "Sim", "Não"))
+                {
+                    AssetDatabase.DeleteAsset(configPath);
+                }
+                else
+                {
+                    Selection.activeObject = existingConfig;
+                    EditorGUIUtility.PingObject(existingConfig);
+                    return;
+                }
+            }
+            
+            var config = ScriptableObject.CreateInstance<UltraSaveConfig>();
+            AssetDatabase.CreateAsset(config, configPath);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             
             Selection.activeObject = config;
             EditorGUIUtility.PingObject(config);
             
-            UnityEngine.Debug.Log("UltraSaveConfig created at " + assetPath);
+            Debug.Log($"UltraSaveConfig criado em: {configPath}");
+            EditorUtility.DisplayDialog("Config Criado", 
+                "UltraSaveConfig criado com sucesso!\n\nLocalização: " + configPath, "OK");
         }
         
-        [MenuItem("Tools/UltraSaveSystem/Open Save Folder")]
+        [MenuItem("Tools/Ultra Save System/Open Save Folder", false, 2)]
         public static void OpenSaveFolder()
         {
             var path = Path.Combine(Application.persistentDataPath, "UltraSaves");
-            if (!Directory.Exists(path))
-                Directory.CreateDirectory(path);
             
-            Process.Start(path);
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+            
+            System.Diagnostics.Process.Start(path);
         }
         
-        [MenuItem("Tools/UltraSaveSystem/Clear All Saves")]
-        public static void ClearAllSaves()
+        [MenuItem("Tools/Ultra Save System/Documentation", false, 100)]
+        public static void OpenDocumentation()
         {
-            if (EditorUtility.DisplayDialog("Clear All Saves", 
-                "This will delete all save files. Are you sure?", "Yes", "Cancel"))
-            {
-                var path = Path.Combine(Application.persistentDataPath, "UltraSaves");
-                if (Directory.Exists(path))
-                {
-                    Directory.Delete(path, true);
-                    Directory.CreateDirectory(path);
-                    UnityEngine.Debug.Log("All saves cleared");
-                }
-            }
-        }
-        
-        [MenuItem("Tools/UltraSaveSystem/Refresh System")]
-        public static void RefreshSystem()
-        {
-            if (Application.isPlaying)
-            {
-                UnityEngine.Debug.Log("System refreshed - object count: " + UltraSaveManager.TrackedObjectCount);
-            }
-            else
-            {
-                UnityEngine.Debug.Log("System refresh is only available in play mode");
-            }
+            Application.OpenURL("https://github.com/Natteens/com.natteens.ultrasavesystem");
         }
     }
 }

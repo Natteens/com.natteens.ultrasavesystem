@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 
 namespace UltraSaveSystem
 {
-    public static class UltraSaveAPI
+    public static class UltraSave
     {
         public static async Task<bool> Save()
         {

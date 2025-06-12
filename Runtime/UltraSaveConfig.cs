@@ -1,24 +1,24 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace UltraSaveSystem
 {
+    [CreateAssetMenu(fileName = "UltraSaveConfig", menuName = "Ultra Save System/Config", order = 1)]
     public class UltraSaveConfig : ScriptableObject
     {
         [Header("Sistema")]
         public bool enableSystem = true;
-        public bool enableEncryption = false;
-        public bool enableVerboseLogging = true;
+        public bool enableEncryption;
+        public bool enableVerboseLogging;
         
         [Header("Autosave")]
-        public bool enableAutoSave = false;
+        public bool enableAutoSave;
         
         [SerializeField] private int _autoSaveMinutes = 5;
         
         [Header("Slots")]
         public int maxSaveSlots = 10;
-        public int currentSlot = 0;
+        public int currentSlot = 1;
         
         [Header("Player")]
         public string playerName = "Player";
@@ -26,9 +26,11 @@ namespace UltraSaveSystem
         [Header("Performance")]
         public int maxJobsPerFrame = 8;
         public bool useJobSystem = true;
+        public bool enableCompression = true;
         
-        [Header("Debug")]
-        public bool showDebugInfo = false;
+        [Header("Interface")]
+        public bool showEditorDialogs;
+        public bool showDebugInfo;
         public bool logSaveOperations = true;
         
         [SerializeField] private List<SavedObjectInfo> _trackedObjects = new List<SavedObjectInfo>();
@@ -60,27 +62,6 @@ namespace UltraSaveSystem
         public void ClearTrackedObjects()
         {
             _trackedObjects.Clear();
-        }
-    }
-    
-    [Serializable]
-    public class SavedObjectInfo
-    {
-        public string saveKey;
-        public string typeName;
-        public string sceneName;
-        public Vector3 position;
-        public bool hasTransform;
-        public DateTime lastSaved;
-        public int fieldCount;
-        public long dataSize;
-        
-        public SavedObjectInfo(string key, string type, string scene)
-        {
-            saveKey = key;
-            typeName = type;
-            sceneName = scene;
-            lastSaved = DateTime.Now;
         }
     }
 }

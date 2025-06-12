@@ -5,19 +5,6 @@ using UnityEngine;
 namespace UltraSaveSystem
 {
     [Serializable]
-    public class UltraSaveFile
-    {
-        public string version;
-        public int slot;
-        public bool isAutoSave;
-        public string playerName;
-        public string sceneName;
-        public DateTime saveTime;
-        public bool isEncrypted;
-        public List<SavedObjectData> objects;
-    }
-    
-    [Serializable]
     public class SavedObjectData
     {
         public string saveKey;

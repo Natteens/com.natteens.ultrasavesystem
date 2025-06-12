@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace UltraSaveSystem.Tests.Tests.Runtime
+namespace UltraSaveSystem.Tests.Runtime
 {
     [Saveable("rotating_cube", true)]
     public class SimpleCubeExample : MonoBehaviour
@@ -38,10 +38,10 @@ namespace UltraSaveSystem.Tests.Tests.Runtime
             transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
             
             if (Input.GetKeyDown(KeyCode.F5))
-                _ = UltraSaveAPI.Save();
+                _ = UltraSave.Save();
             
             if (Input.GetKeyDown(KeyCode.F6))
-                _ = UltraSaveAPI.Load();
+                _ = UltraSave.Load();
         }
         
         private void SetupCube()
@@ -56,7 +56,6 @@ namespace UltraSaveSystem.Tests.Tests.Runtime
             ApplyVisualSettings();
         }
         
-        // Este método será chamado automaticamente após o load
         private void ApplyVisualSettings()
         {
             if (cubeRenderer != null)
@@ -101,10 +100,10 @@ namespace UltraSaveSystem.Tests.Tests.Runtime
             GUILayout.Space(10);
             
             if (GUILayout.Button("Save (F5)"))
-                _ = UltraSaveAPI.Save();
+                _ = UltraSave.Save();
             
             if (GUILayout.Button("Load (F6)"))
-                _ = UltraSaveAPI.Load();
+                _ = UltraSave.Load();
             
             GUILayout.EndArea();
         }

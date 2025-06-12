@@ -12,10 +12,10 @@ namespace UltraSaveSystem
 {
     public static class UltraSaveExtensions
     {
-        private static readonly Dictionary<string, object> _saveableObjects = new Dictionary<string, object>();
-        private static readonly Dictionary<string, SaveableMetadata> _objectMetadata = new Dictionary<string, SaveableMetadata>();
-        private static readonly Dictionary<Type, FieldInfo[]> _cachedFields = new Dictionary<Type, FieldInfo[]>();
-        private static readonly Dictionary<string, SavedObjectData> _pendingLoadData = new Dictionary<string, SavedObjectData>();
+        private static readonly Dictionary<string, object> _saveableObjects = new();
+        private static readonly Dictionary<string, SaveableMetadata> _objectMetadata = new();
+        private static readonly Dictionary<Type, FieldInfo[]> _cachedFields = new();
+        private static readonly Dictionary<string, SavedObjectData> _pendingLoadData = new();
         
         public static void RegisterForSave(this object obj, string customKey = null)
         {
