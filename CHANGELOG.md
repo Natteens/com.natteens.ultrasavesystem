@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/Natteens/com.natteens.ultrasavesystem/compare/v1.0.0...v1.1.0) (2025-06-12)
+
+
+### Features
+
+* refactored system ([387efe1](https://github.com/Natteens/com.natteens.ultrasavesystem/commit/387efe181628c53ab0cb1a7def36b569402bae33))
+
 # 1.0.0 (2025-06-04)
 
 
