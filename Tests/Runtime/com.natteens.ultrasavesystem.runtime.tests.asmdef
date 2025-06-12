@@ -1,8 +1,7 @@
 {
     "name": "com.natteens.ultrasavesystem.runtime.tests",
-    "rootNamespace": "UltraSaveSystem.Tests",
+    "rootNamespace": "UltraSaveSystem",
     "references": [
-        "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "com.natteens.ultrasavesystem"
     ],

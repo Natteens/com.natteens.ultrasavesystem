@@ -1,6 +1,6 @@
 {
     "name": "com.natteens.ultrasavesystem.editor",
-    "rootNamespace": "UltraSaveSystem.Editor",
+    "rootNamespace": "UltraSaveSystem",
     "references": [
         "com.natteens.ultrasavesystem"
     ],

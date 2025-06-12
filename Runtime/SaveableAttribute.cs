@@ -2,9 +2,6 @@ using System;
 
 namespace UltraSaveSystem
 {
-    /// <summary>
-    ///     Atributo para marcar classes como saveáveis
-    /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
     public class SaveableAttribute : Attribute
     {
@@ -23,9 +20,6 @@ namespace UltraSaveSystem
         public SavePriority Priority { get; }
     }
 
-    /// <summary>
-    ///     Atributo para marcar campos como saveáveis
-    /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public class SaveFieldAttribute : Attribute
     {
@@ -39,20 +33,14 @@ namespace UltraSaveSystem
         public bool Encrypted { get; }
     }
 
-    /// <summary>
-    ///     Prioridade de salvamento
-    /// </summary>
     public enum SavePriority : byte
     {
-        Critical = 0, // Salva primeiro
+        Critical = 0,
         High = 1,
         Normal = 2,
-        Low = 3 // Salva por último
+        Low = 3
     }
 
-    /// <summary>
-    ///     Interface para objetos com salvamento customizado
-    /// </summary>
     public interface ICustomSaveable
     {
         void OnBeforeSave();

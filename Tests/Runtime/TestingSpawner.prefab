@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5679794915723417333}
-  - component: {fileID: 5195131112019993712}
+  - component: {fileID: 3454853026753240460}
   m_Layer: 0
   m_Name: TestingSpawner
   m_TagString: Untagged
@@ -32,7 +32,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5195131112019993712
+--- !u!114 &3454853026753240460
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,18 +41,18 @@ MonoBehaviour:
   m_GameObject: {fileID: 1809233797002268867}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: eb1fa6327088f0b4e8a0ded5260d4be5, type: 3}
+  m_Script: {fileID: 11500000, guid: be6038a009edaa74f9afe97a7580bcd4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   rotationSpeed: 50
   scale: 1
-  currentColorIndex: 0
-  colorPalette:
+  colorIndex: 0
+  colors:
+  - {r: 1, g: 1, b: 1, a: 1}
+  - {r: 0, g: 0, b: 0, a: 1}
   - {r: 1, g: 0, b: 0, a: 1}
   - {r: 0, g: 1, b: 0, a: 1}
   - {r: 0, g: 0, b: 1, a: 1}
   - {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   - {r: 0, g: 1, b: 1, a: 1}
   - {r: 1, g: 0, b: 1, a: 1}
-  - {r: 1, g: 1, b: 1, a: 1}
-  - {r: 0, g: 0, b: 0, a: 1}
