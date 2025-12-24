@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace UltraSaveSystem
 {
-    [CreateAssetMenu(fileName = "UltraSaveConfig", menuName = "Ultra Save System/Config", order = 1)]
+    [CreateAssetMenu(fileName = "UltraSaveConfig", menuName = "Scriptable Objects/Ultra Save System/Config", order = 1)]
     public class UltraSaveConfig : ScriptableObject
     {
         [Header("Sistema")]
